@@ -5,6 +5,7 @@
   let routeLayers;
   let municipalityLayer;
   let neighborhoodsLayer;
+  let heatLayer;
   let selectedNeighborhoodLayer;
   let selectedNeighborhoodHalo;
   let currentMapMode = "neighborhood";
@@ -338,6 +339,8 @@
       if (map.hasLayer(neighborhoodsLayer)) map.removeLayer(neighborhoodsLayer);
       neighborhoodsLayer = null;
     }
+    if (map && heatLayer) map.removeLayer(heatLayer);
+    heatLayer = null;
     if (map && selectedNeighborhoodLayer) map.removeLayer(selectedNeighborhoodLayer);
     if (map && selectedNeighborhoodHalo) map.removeLayer(selectedNeighborhoodHalo);
     selectedNeighborhoodLayer = null;
@@ -368,14 +371,22 @@
     if (!map) return;
     currentMapMode = mode;
     const municipalityMode = mode === "municipality";
+    const heatMode = mode === "heat";
     if (municipalityMode) {
       if (map.hasLayer(routeLayers)) map.removeLayer(routeLayers);
+      if (heatLayer && map.hasLayer(heatLayer)) map.removeLayer(heatLayer);
       if (neighborhoodsLayer && !map.hasLayer(neighborhoodsLayer)) neighborhoodsLayer.addTo(map);
       const bounds = municipalityLayer?.getBounds();
       if (bounds?.isValid()) map.fitBounds(bounds, { padding: [34, 34], animate });
     } else {
       if (neighborhoodsLayer && map.hasLayer(neighborhoodsLayer)) map.removeLayer(neighborhoodsLayer);
-      if (!map.hasLayer(routeLayers)) routeLayers.addTo(map);
+      if (heatMode) {
+        if (map.hasLayer(routeLayers)) map.removeLayer(routeLayers);
+        if (heatLayer && !map.hasLayer(heatLayer)) heatLayer.addTo(map);
+      } else {
+        if (heatLayer && map.hasLayer(heatLayer)) map.removeLayer(heatLayer);
+        if (!map.hasLayer(routeLayers)) routeLayers.addTo(map);
+      }
       const bounds = selectedNeighborhoodLayer?.getBounds();
       if (bounds?.isValid()) map.fitBounds(bounds, { padding: [42, 42], maxZoom: 16, animate });
     }
@@ -452,6 +463,19 @@
       layer.bindTooltip(`Bairro estimado: ${escapeHtml(neighborhood.nome)}`);
       layer.addTo(neighborhoodsLayer);
     });
+    const maximumHomes = Math.max(1, ...data.ruas.map((street) => Number(street.domicilios) || 0));
+    const heatRenderer = L.canvas({ padding: 0.5 });
+    heatLayer = L.layerGroup(data.ruas.map((street) => {
+      const intensity = Math.sqrt((Number(street.domicilios) || 0) / maximumHomes);
+      const hue = Math.round(220 - intensity * 220);
+      return L.circleMarker([street.lat, street.lon], {
+        renderer: heatRenderer,
+        radius: 10 + intensity * 24,
+        stroke: false,
+        fillColor: `hsl(${hue}, 88%, 48%)`,
+        fillOpacity: 0.24 + intensity * 0.28,
+      }).bindTooltip(`<strong>${escapeHtml(street.nome)}</strong><br>${street.domicilios} domicílios`);
+    }));
     drawSelectedNeighborhood(data);
     setMapMode("neighborhood", false);
     setTimeout(() => map.invalidateSize(), 50);
@@ -615,6 +639,10 @@
     }
     if (button.dataset.action === "fit-neighborhood") {
       setMapMode("neighborhood");
+      return;
+    }
+    if (button.dataset.action === "fit-heat") {
+      setMapMode("heat");
       return;
     }
     if (button.dataset.action === "copy-team") {

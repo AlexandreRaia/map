@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}?v=11">
   <script defer src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-  <script defer src="{{ url_for('static', path='/app.js') }}?v=12"></script>
+  <script defer src="{{ url_for('static', path='/app.js') }}?v=13"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -94,8 +94,9 @@
               <span><i class="legend-selected"></i>Bairro selecionado</span>
             </div>
             <div class="map-view-actions">
-              <button type="button" data-action="fit-neighborhood">Ver bairro</button>
-              <button type="button" data-action="fit-municipality">Ver município</button>
+              <button type="button" data-action="fit-neighborhood">Equipes</button>
+              <button type="button" data-action="fit-heat">Mapa de calor</button>
+              <button type="button" data-action="fit-municipality">Município</button>
             </div>
           </div>
         </div>
