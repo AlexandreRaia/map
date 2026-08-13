@@ -388,4 +388,4 @@ def divisao_fragmento(
 
 @app.get("/saude")
 def saude():
-    return {"status": "ok", "base": DB_PATH.exists()}
+    return {"status": "ok", "base": DB_PATH.exists(), "versao": 2}

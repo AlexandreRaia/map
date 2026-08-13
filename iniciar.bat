@@ -34,8 +34,8 @@ if not exist "cnefe.sqlite" (
   if errorlevel 1 goto :erro
 )
 
-rem Se o MapBairros ja estiver ativo, apenas abre a pagina existente.
-powershell.exe -NoProfile -Command "try { $r = Invoke-RestMethod -Uri 'http://127.0.0.1:8000/saude' -TimeoutSec 2; if ($r.status -eq 'ok') { exit 0 } }; exit 1" >nul 2>&1
+rem Reaproveita apenas um servidor da versao atual. Encerra uma versao antiga do proprio MapBairros.
+powershell.exe -NoProfile -Command "try { $r = Invoke-RestMethod -Uri 'http://127.0.0.1:8000/saude' -TimeoutSec 2; if ($r.status -eq 'ok' -and $r.versao -eq 2) { exit 0 }; if ($r.status -eq 'ok') { $pidMapa = (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction Stop).OwningProcess; Stop-Process -Id $pidMapa -Force; Start-Sleep -Milliseconds 500 } }; exit 1" >nul 2>&1
 if not errorlevel 1 (
   echo O MapBairros ja esta em execucao.
   if not defined MAPBAIRROS_NO_BROWSER start "" powershell.exe -NoProfile -WindowStyle Hidden -Command "Start-Process 'http://127.0.0.1:8000'"
