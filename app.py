@@ -5,10 +5,14 @@ from __future__ import annotations
 import json
 import math
 import sqlite3
+import time
 from pathlib import Path
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request as UrlRequest, urlopen
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -21,15 +25,73 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
-def conectar() -> sqlite3.Connection:
+def conectar(somente_leitura: bool = True) -> sqlite3.Connection:
     if not DB_PATH.exists():
         raise HTTPException(
             status_code=503,
             detail="Base CNEFE ausente. Execute importar_dados.py antes de iniciar.",
         )
-    conexao = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+    conexao = (
+        sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+        if somente_leitura
+        else sqlite3.connect(DB_PATH, timeout=30)
+    )
     conexao.row_factory = sqlite3.Row
     return conexao
+
+
+def garantir_cache_osm() -> None:
+    if not DB_PATH.exists():
+        return
+    with conectar(somente_leitura=False) as conexao:
+        conexao.execute(
+            """
+            CREATE TABLE IF NOT EXISTS geometrias_osm (
+                bairro_id INTEGER PRIMARY KEY REFERENCES bairros(id),
+                dados_json TEXT NOT NULL,
+                atualizado_em INTEGER NOT NULL
+            )
+            """
+        )
+
+
+def simplificar_contorno(pontos: list[list[float]], maximo: int = 90) -> list[list[float]]:
+    if len(pontos) <= maximo:
+        return pontos
+    passo = len(pontos) / maximo
+    return [pontos[int(indice * passo)] for indice in range(maximo)]
+
+
+def consultar_overpass(contorno: list[list[float]]) -> list[dict[str, object]]:
+    poligono = " ".join(
+        f"{float(latitude):.6f} {float(longitude):.6f}"
+        for latitude, longitude in simplificar_contorno(contorno)
+    )
+    consulta = f'[out:json][timeout:35];way["highway"]["name"](poly:"{poligono}");out tags geom qt;'
+    corpo = urlencode({"data": consulta}).encode("utf-8")
+    ultimo_erro: Exception | None = None
+    for endereco in (
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+    ):
+        try:
+            requisicao = UrlRequest(
+                endereco,
+                data=corpo,
+                headers={"Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"},
+            )
+            with urlopen(requisicao, timeout=45) as resposta:
+                elementos = json.loads(resposta.read().decode("utf-8")).get("elements", [])
+            return [
+                item for item in elementos
+                if item.get("type") == "way" and len(item.get("geometry", [])) >= 2
+            ]
+        except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as erro:
+            ultimo_erro = erro
+    raise RuntimeError("Serviço de geometria OSM indisponível") from ultimo_erro
+
+
+garantir_cache_osm()
 
 
 def nome_exibicao(nome: str) -> str:
@@ -188,6 +250,43 @@ def bairros_fragmento(request: Request, municipio: int = Query(...)):
     )
 
 
+@app.get("/geometrias", response_class=JSONResponse)
+def geometrias_bairro(bairro: int = Query(..., ge=1), atualizar: bool = Query(False)):
+    with conectar() as conexao:
+        registro = conexao.execute(
+            "SELECT contorno_json FROM bairros WHERE id = ?", (bairro,)
+        ).fetchone()
+        cache = conexao.execute(
+            "SELECT dados_json, atualizado_em FROM geometrias_osm WHERE bairro_id = ?", (bairro,)
+        ).fetchone()
+    if registro is None:
+        raise HTTPException(status_code=404, detail="Bairro não encontrado.")
+    if cache is not None and not atualizar:
+        return {
+            "ways": json.loads(cache["dados_json"]),
+            "origem": "cache",
+            "atualizado_em": cache["atualizado_em"],
+        }
+    try:
+        geometrias = consultar_overpass(json.loads(registro["contorno_json"]))
+    except RuntimeError as erro:
+        raise HTTPException(status_code=503, detail=str(erro)) from erro
+    agora = int(time.time())
+    dados_json = json.dumps(geometrias, ensure_ascii=False, separators=(",", ":"))
+    with conectar(somente_leitura=False) as conexao:
+        conexao.execute(
+            """
+            INSERT INTO geometrias_osm(bairro_id, dados_json, atualizado_em)
+            VALUES (?, ?, ?)
+            ON CONFLICT(bairro_id) DO UPDATE SET
+                dados_json = excluded.dados_json,
+                atualizado_em = excluded.atualizado_em
+            """,
+            (bairro, dados_json, agora),
+        )
+    return {"ways": geometrias, "origem": "osm", "atualizado_em": agora}
+
+
 @app.get("/divisao", response_class=HTMLResponse)
 def divisao_fragmento(
     request: Request,
@@ -247,6 +346,7 @@ def divisao_fragmento(
     bairro_dados["municipio_exibicao"] = nome_exibicao(bairro_dados["municipio_nome"])
 
     mapa = {
+        "bairro_id": bairro,
         "bairro": bairro_dados["nome_exibicao"],
         "municipio": bairro_dados["municipio_exibicao"],
         "codigo_municipio": bairro_dados["codigo_municipio"],

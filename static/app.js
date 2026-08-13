@@ -117,41 +117,16 @@
   async function fetchStreetGeometries(data, signal) {
     const cacheKey = `${data.municipio}|${data.bairro}`;
     if (geometryCache.has(cacheKey)) return geometryCache.get(cacheKey);
-    const polygon = simplifyPolygon(data.contorno || []);
-    if (polygon.length < 3) throw new Error("Contorno insuficiente para consultar as ruas.");
-    const polygonText = polygon
-      .map(([lat, lon]) => `${Number(lat).toFixed(6)} ${Number(lon).toFixed(6)}`)
-      .join(" ");
-    const query = `[out:json][timeout:35];way["highway"]["name"](poly:"${polygonText}");out tags geom qt;`;
-    const endpoints = [
-      "https://overpass-api.de/api/interpreter",
-      "https://overpass.kumi.systems/api/interpreter",
-    ];
-    let lastError;
-    for (const endpoint of endpoints) {
-      try {
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
-          body: new URLSearchParams({ data: query }),
-          signal,
-        });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const payload = await response.json();
-        const ways = (payload.elements || []).filter((element) =>
-          element.type === "way" &&
-          Array.isArray(element.geometry) &&
-          element.geometry.length >= 2 &&
-          !excludedHighways.has(element.tags?.highway)
-        );
-        geometryCache.set(cacheKey, ways);
-        return ways;
-      } catch (error) {
-        if (error.name === "AbortError") throw error;
-        lastError = error;
-      }
-    }
-    throw lastError || new Error("Serviço de geometria indisponível.");
+    const response = await fetch(`/geometrias?bairro=${encodeURIComponent(data.bairro_id)}`, { signal });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    const ways = (payload.ways || []).filter((element) =>
+      Array.isArray(element.geometry) &&
+      element.geometry.length >= 2 &&
+      !excludedHighways.has(element.tags?.highway)
+    );
+    geometryCache.set(cacheKey, ways);
+    return ways;
   }
 
   function buildStreetMatcher(streets) {

@@ -93,6 +93,12 @@ def criar_schema(conexao: sqlite3.Connection) -> None:
             UNIQUE (bairro_id, nome_busca)
         );
 
+        CREATE TABLE geometrias_osm (
+            bairro_id INTEGER PRIMARY KEY REFERENCES bairros(id),
+            dados_json TEXT NOT NULL,
+            atualizado_em INTEGER NOT NULL
+        );
+
         CREATE INDEX idx_bairros_municipio ON bairros(codigo_municipio, domicilios DESC);
         CREATE INDEX idx_ruas_bairro ON ruas(bairro_id, domicilios DESC);
         """
