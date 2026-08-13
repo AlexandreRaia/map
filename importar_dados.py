@@ -28,7 +28,9 @@ def nome_logradouro(tipo: str, titulo: str, nome: str) -> str:
 
 
 def gleba_cidade_sao_pedro(codigo_municipio: int, bairro: str, cep: str) -> str | None:
-    if codigo_municipio != 3547304 or chave_texto(bairro) != "CIDADE SAO PEDRO":
+    if codigo_municipio != 3547304 or chave_texto(bairro) not in {
+        "CIDADE SAO PEDRO", "SAO PEDRO"
+    }:
         return None
     try:
         numero = int("".join(caractere for caractere in cep if caractere.isdigit()))
@@ -172,8 +174,13 @@ def importar(csv_path: Path = CSV_PADRAO, db_path: Path = DB_PADRAO) -> None:
             if (
                 gleba is None
                 and codigo_municipio == 3547304
-                and chave_texto(bairro_original) == "CIDADE SAO PEDRO"
-                and chave_texto(linha[9]) == "SAGITARIO"
+                and (
+                    chave_texto(bairro_original) == "SAO PEDRO"
+                    or (
+                        chave_texto(bairro_original) == "CIDADE SAO PEDRO"
+                        and chave_texto(linha[9]) == "SAGITARIO"
+                    )
+                )
             ):
                 gleba = "A"
             if gleba:
