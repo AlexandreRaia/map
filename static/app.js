@@ -38,12 +38,6 @@
       maxZoom: 20,
     }).addTo(map);
     routeLayers = L.featureGroup().addTo(map);
-    map.on("zoomend", updateStreetLabelVisibility);
-  }
-
-  function updateStreetLabelVisibility() {
-    const visible = map && currentMapMode === "neighborhood" && map.getZoom() >= 15;
-    map?.getContainer().classList.toggle("show-street-labels", Boolean(visible));
   }
 
   function normalizeStreetName(value) {
@@ -309,6 +303,43 @@
       }));
     });
     svg.appendChild(roads);
+
+    const labelSegments = new Map();
+    segments.forEach((segment) => {
+      if (!segment.name) return;
+      const current = labelSegments.get(segment.name);
+      if (!current || segment.geometry.length > current.geometry.length) {
+        labelSegments.set(segment.name, segment);
+      }
+    });
+    const labels = svgElement("g", { "clip-path": "url(#print-neighborhood-clip)" });
+    [...labelSegments.values()].forEach((segment, index) => {
+      const identifier = `print-street-${index}`;
+      definitions.appendChild(svgElement("path", {
+        id: identifier,
+        d: pathData(segment.geometry),
+        fill: "none",
+        stroke: "none",
+      }));
+      const text = svgElement("text", {
+        fill: "#24364d",
+        stroke: "#ffffff",
+        "stroke-width": "3",
+        "paint-order": "stroke",
+        "font-family": "Arial, sans-serif",
+        "font-size": "9",
+        "font-weight": "700",
+        "text-anchor": "middle",
+      });
+      const textPath = svgElement("textPath", {
+        href: `#${identifier}`,
+        startOffset: "50%",
+      });
+      textPath.textContent = segment.name;
+      text.appendChild(textPath);
+      labels.appendChild(text);
+    });
+    svg.appendChild(labels);
     svg.appendChild(svgElement("polygon", {
       points: polygonPoints,
       fill: "none",
@@ -399,7 +430,6 @@
     municipalityLayer?.bringToFront();
     selectedNeighborhoodHalo?.bringToFront();
     selectedNeighborhoodLayer?.bringToFront();
-    updateStreetLabelVisibility();
     document.querySelectorAll(".map-view-actions button").forEach((button) => {
       const active = button.dataset.action === `fit-${mode}`;
       button.classList.toggle("active", active);
@@ -507,7 +537,6 @@
       const matchedNames = new Set();
       const printSegments = [];
       const geometriesByTeam = new Map();
-      const labelByStreet = new Map();
       let approximateWays = 0;
       let renderedSegments = 0;
 
@@ -527,18 +556,9 @@
         const matchNote = `Correspondência ${match.match === "exact" ? "exata" : "por nome semelhante"} com o CNEFE`;
         clippedGeometries.forEach((geometry) => {
           renderedSegments += 1;
-          printSegments.push({ geometry, team, approximate, weight });
+          printSegments.push({ geometry, team, approximate, weight, name: match.street.nome });
           if (!geometriesByTeam.has(team)) geometriesByTeam.set(team, []);
           geometriesByTeam.get(team).push(geometry);
-          const labelKey = normalizeStreetName(match.street.nome);
-          const currentLabel = labelByStreet.get(labelKey);
-          if (!currentLabel || geometry.length > currentLabel.geometry.length) {
-            labelByStreet.set(labelKey, {
-              geometry,
-              name: match.street.nome,
-              team,
-            });
-          }
         });
       });
 
@@ -552,19 +572,6 @@
         })
           .bindTooltip(`Equipe ${team} · ${geometries.length} trechos`)
           .addTo(routeLayers);
-      });
-
-      labelByStreet.forEach(({ geometry, name, team }) => {
-        const position = geometry[Math.floor(geometry.length / 2)];
-        L.marker(position, {
-          interactive: false,
-          keyboard: false,
-          icon: L.divIcon({
-            className: "street-label-icon",
-            html: `<span style="--team-color:${teamColor(team)}">${escapeHtml(name)}</span>`,
-            iconSize: null,
-          }),
-        }).addTo(routeLayers);
       });
 
       // Recria por último para o limite permanecer acima de todas as ruas.

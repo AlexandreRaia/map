@@ -430,29 +430,6 @@ footer {
 
 .leaflet-tooltip { font-family: inherit; }
 
-.street-label-icon { display: none; width: max-content !important; }
-
-.show-street-labels .street-label-icon { display: block; }
-
-.street-label-icon span {
-  display: block;
-  max-width: 150px;
-  padding: 2px 4px;
-  overflow: hidden;
-  color: #10233d;
-  background: rgba(255, 255, 255, 0.88);
-  border-left: 3px solid var(--team-color);
-  border-radius: 2px;
-  box-shadow: 0 1px 3px rgba(16, 35, 61, 0.2);
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1.15;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
 @media (max-width: 900px) {
   .controls form { flex-wrap: wrap; }
   .field { flex: 1 1 220px; }

@@ -27,6 +27,22 @@ def nome_logradouro(tipo: str, titulo: str, nome: str) -> str:
     return " ".join(parte.strip() for parte in (tipo, titulo, nome) if parte.strip())
 
 
+def gleba_cidade_sao_pedro(codigo_municipio: int, bairro: str, cep: str) -> str | None:
+    if codigo_municipio != 3547304 or chave_texto(bairro) != "CIDADE SAO PEDRO":
+        return None
+    try:
+        numero = int("".join(caractere for caractere in cep if caractere.isdigit()))
+    except ValueError:
+        return None
+    if 6_535_000 <= numero <= 6_535_199:
+        return "A"
+    if 6_535_200 <= numero <= 6_535_399:
+        return "B"
+    if 6_535_400 <= numero <= 6_535_499:
+        return "C"
+    return None
+
+
 def produto_vetorial(o: tuple[float, float], a: tuple[float, float], b: tuple[float, float]) -> float:
     return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
 
@@ -152,6 +168,18 @@ def importar(csv_path: Path = CSV_PADRAO, db_path: Path = DB_PADRAO) -> None:
             bairro_original = linha[3].strip()
             bairro_nome = linha[4].strip() or bairro_original
             chave_geo = linha[5].strip() or f"{codigo_municipio}|{bairro_nome}"
+            gleba = gleba_cidade_sao_pedro(codigo_municipio, bairro_original, linha[6])
+            if (
+                gleba is None
+                and codigo_municipio == 3547304
+                and chave_texto(bairro_original) == "CIDADE SAO PEDRO"
+                and chave_texto(linha[9]) == "SAGITARIO"
+            ):
+                gleba = "A"
+            if gleba:
+                bairro_nome = f"Cidade São Pedro - Gleba {gleba}"
+                bairro_original = f"CIDADE SAO PEDRO - GLEBA {gleba}"
+                chave_geo = f"{codigo_municipio}|Cidade São Pedro - Gleba {gleba}"
             rua_nome = nome_logradouro(linha[7], linha[8], linha[9])
             rua_busca = chave_texto(rua_nome)
             if not rua_busca:
