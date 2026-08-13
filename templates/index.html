@@ -8,10 +8,10 @@
   <title>MapBairros — Divisão de Rotas</title>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
-  <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}?v=11">
+  <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}?v=14">
   <script defer src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-  <script defer src="{{ url_for('static', path='/app.js') }}?v=13"></script>
+  <script defer src="{{ url_for('static', path='/app.js') }}?v=14"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -94,9 +94,9 @@
               <span><i class="legend-selected"></i>Bairro selecionado</span>
             </div>
             <div class="map-view-actions">
-              <button type="button" data-action="fit-neighborhood">Equipes</button>
-              <button type="button" data-action="fit-heat">Mapa de calor</button>
-              <button type="button" data-action="fit-municipality">Município</button>
+              <button type="button" data-action="fit-neighborhood" disabled>Equipes</button>
+              <button type="button" data-action="fit-heat" disabled>Mapa de calor</button>
+              <button type="button" data-action="fit-municipality" disabled>Município</button>
             </div>
           </div>
         </div>

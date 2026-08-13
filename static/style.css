@@ -230,6 +230,14 @@ main { min-height: 0; display: contents; }
 
 .map-view-actions button:hover { border-color: var(--accent); color: var(--accent); }
 
+.map-view-actions button:disabled {
+  color: #8b94a3;
+  background: #eef0f3;
+  border-color: #d8dce2;
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
 .map-view-actions button.active {
   color: #fff;
   background: var(--navy);

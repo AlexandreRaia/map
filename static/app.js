@@ -400,6 +400,13 @@
     });
   }
 
+  function setMapControlsReady(ready) {
+    document.querySelectorAll(".map-view-actions button").forEach((button) => {
+      button.disabled = !ready;
+      button.title = ready ? "" : "Aguarde a geração da divisão";
+    });
+  }
+
   async function renderMap() {
     initMap();
     const element = document.getElementById("mapData");
@@ -414,6 +421,7 @@
       return;
     }
     currentMapData = data;
+    setMapControlsReady(true);
     const printNeighborhood = document.getElementById("printBairro");
     const printCity = document.getElementById("printMunicipio");
     const printSummary = document.getElementById("printMapSummary");
@@ -614,11 +622,17 @@
     showMessage.timeout = setTimeout(() => { message.hidden = true; }, 3200);
   }
 
-  document.addEventListener("DOMContentLoaded", initMap);
+  document.addEventListener("DOMContentLoaded", () => {
+    initMap();
+    setMapControlsReady(false);
+    const form = document.getElementById("filtros");
+    if (form) window.setTimeout(() => form.requestSubmit(), 100);
+  });
 
   document.addEventListener("change", (event) => {
     if (event.target.matches("#municipioSelect")) {
       currentMapData = null;
+      setMapControlsReady(false);
       document.getElementById("resultados").innerHTML = `
         <div class="empty-state"><span class="empty-number">02</span>
         <h2>Agora escolha um bairro</h2><p>A lista foi atualizada para o município selecionado.</p></div>`;
