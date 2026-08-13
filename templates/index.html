@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Divisão geográfica de rotas por município e bairro com dados do CNEFE 2022.">
+  <meta name="htmx-config" content='{"historyCacheSize":0,"selfRequestsOnly":true}'>
+  <title>MapBairros — Divisão de Rotas</title>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}?v=11">
+  <script defer src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script defer src="{{ url_for('static', path='/app.js') }}?v=11"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">CNEFE · Censo 2022</p>
+        <h1>MapBairros</h1>
+        <p class="subtitle">Divisão territorial de rotas por equipe</p>
+      </div>
+      <div class="database-status" title="Base carregada no computador">
+        <span class="status-dot" aria-hidden="true"></span>
+        {{ enderecos_formatado }} endereços
+      </div>
+    </header>
+
+    <main>
+      <section class="controls" aria-label="Filtros da divisão">
+        <form
+          id="filtros"
+          hx-get="/divisao"
+          hx-target="#resultados"
+          hx-swap="innerHTML"
+          hx-indicator="#loading"
+          hx-disabled-elt="#gerarBtn"
+        >
+          <div class="field">
+            <label for="municipioSelect">Município</label>
+            <select
+              id="municipioSelect"
+              name="municipio"
+              hx-get="/bairros"
+              hx-target="#bairroSelect"
+              hx-swap="outerHTML"
+              hx-trigger="change"
+              required
+            >
+              {% for municipio in municipios %}
+                <option value="{{ municipio.codigo }}" {% if municipio_selecionado and municipio.codigo == municipio_selecionado.codigo %}selected{% endif %}>
+                  {{ municipio.nome_exibicao }} · {{ municipio.domicilios }} endereços
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field field-grow">
+            <label for="bairroSelect">Bairro</label>
+            <select id="bairroSelect" name="bairro" required>
+              {% for bairro in bairros %}
+                <option value="{{ bairro.id }}">{{ bairro.nome_exibicao }} · {{ bairro.domicilios }} domicílios</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field field-small">
+            <label for="equipesInput">Equipes</label>
+            <input id="equipesInput" name="equipes" type="number" min="2" max="30" value="10" required>
+          </div>
+
+          <button id="gerarBtn" class="button button-primary" type="submit">
+            Gerar divisão
+          </button>
+          <span id="loading" class="htmx-indicator loading" role="status">Calculando…</span>
+        </form>
+      </section>
+
+      <section class="workspace">
+        <div class="map-area">
+          <div class="print-map-header">
+            <p>Mapa de distribuição de rotas</p>
+            <h1 id="printBairro">Bairro selecionado</h1>
+            <span id="printMunicipio"></span>
+          </div>
+          <div id="printMapGraphic" class="print-map-graphic" aria-hidden="true"></div>
+          <div id="map" aria-label="Mapa das rotas"></div>
+          <div id="printMapSummary" class="print-map-summary"></div>
+          <div class="map-hint">
+            <div class="map-legend-list">
+              <span><i class="legend-municipality"></i>Limite do município</span>
+              <span><i class="legend-neighborhoods"></i>Demais bairros (estimados)</span>
+              <span><i class="legend-selected"></i>Bairro selecionado</span>
+            </div>
+            <div class="map-view-actions">
+              <button type="button" data-action="fit-neighborhood">Ver bairro</button>
+              <button type="button" data-action="fit-municipality">Ver município</button>
+            </div>
+          </div>
+        </div>
+
+        <aside id="resultados" class="results-panel" aria-live="polite">
+          <div class="empty-state">
+            <span class="empty-number">01</span>
+            <h2>Escolha a área de trabalho</h2>
+            <p>Selecione município, bairro e número de equipes para gerar uma divisão equilibrada.</p>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <footer>
+      Fonte: Cadastro Nacional de Endereços para Fins Estatísticos, Censo 2022 — IBGE.
+      Os contornos são estimados a partir dos endereços cadastrados.
+    </footer>
+  </div>
+  <div id="message" class="message" role="alert" hidden></div>
+</body>
+</html>

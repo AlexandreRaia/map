@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Arquivos temporários
+tmp/
+.tmp_*/
+*.log
+
+# Bases-fonte grandes (o aplicativo usa cnefe.sqlite)
+cnefe_2022_domicilios_ruas_municipios_selecionados.csv
+base_detalhada_mapa_calor_cnefe.xlsx
+
+# Sistema e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

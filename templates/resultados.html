@@ -1,0 +1,61 @@
+{% if fragmento == "bairros" %}
+<select id="bairroSelect" name="bairro" required>
+  {% for bairro in bairros %}
+    <option value="{{ bairro.id }}">{{ bairro.nome_exibicao }} · {{ bairro.domicilios }} domicílios</option>
+  {% endfor %}
+</select>
+{% elif fragmento == "divisao" %}
+<div class="results-content">
+  <div class="print-teams-title">
+    <p>MapBairros · Divisão de rotas</p>
+    <h1>Equipes e ruas — {{ bairro.nome_exibicao }}</h1>
+    <span>{{ bairro.municipio_exibicao }}</span>
+  </div>
+  <div class="results-heading">
+    <div>
+      <p class="eyebrow accent">Divisão gerada</p>
+      <h2>{{ bairro.nome_exibicao }}</h2>
+      <p>{{ bairro.municipio_exibicao }}</p>
+    </div>
+    <div class="result-actions">
+      <button class="button button-small" type="button" data-action="copy-all">Copiar tudo</button>
+      <button class="button button-small" type="button" data-action="print">Imprimir</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div><strong>{{ total_ruas }}</strong><span>ruas</span></div>
+    <div><strong>{{ total_domicilios }}</strong><span>domicílios</span></div>
+    <div><strong>{{ equipes|length }}</strong><span>equipes</span></div>
+    <div><strong>{{ diferenca }}</strong><span>diferença máx.</span></div>
+  </div>
+
+  <div id="mapCoverage" class="map-coverage" data-state="loading">
+    Consultando o traçado real das ruas no OpenStreetMap…
+  </div>
+
+  <div class="teams-list">
+    {% for equipe in equipes %}
+      <details class="team-card" data-team="{{ equipe.numero }}" {% if loop.first %}open{% endif %}>
+        <summary>
+          <span class="team-swatch" aria-hidden="true"></span>
+          <span class="team-name">Equipe {{ equipe.numero }}</span>
+          <span class="team-meta">{{ equipe.quantidade_ruas }} ruas · {{ equipe.domicilios }} domicílios</span>
+        </summary>
+        <div class="team-body">
+          {% for rua in equipe.ruas %}
+            <div class="street-row">
+              <span class="street-name">{{ rua.nome_exibicao }}<small class="street-map-status" hidden></small></span>
+              <strong>{{ rua.domicilios }}</strong>
+            </div>
+          {% endfor %}
+          <button class="copy-team" type="button" data-action="copy-team" data-team="{{ equipe.numero }}">
+            Copiar Equipe {{ equipe.numero }}
+          </button>
+        </div>
+      </details>
+    {% endfor %}
+  </div>
+</div>
+<script id="mapData" type="application/json">{{ mapa|tojson }}</script>
+{% endif %}
